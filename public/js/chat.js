@@ -1,62 +1,57 @@
+const chatForm = document.getElementById("chatForm");
+const messageInput = document.getElementById("messageInput");
+const chatBox = document.getElementById("chatBox");
 
-    const chatForm = document.getElementById("chatForm");
-    const messageInput = document.getElementById("messageInput");
-    const chatBox = document.getElementById("chatBox");
+chatForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    chatForm.addEventListener("submit", (e) => {
-      e.preventDefault();
+  const text = messageInput.value.trim();
 
-      const text = messageInput.value.trim();
+  if (text === "") return;
 
-      if(text === "") return;
+  try {
+    // Send message to backend
+    const response = await axios.post(
+      "http://localhost:3000/chat/add-message",
+      {
+        message: text,
+        userId: 1,
+      },
+    );
 
-      // Create message
-      const message = document.createElement("div");
-      message.classList.add("message", "sent");
+    console.log(response.data);
 
-      // Time
-      const now = new Date();
+    // Create UI message
+    const message = document.createElement("div");
 
-      let hours = now.getHours();
-      let minutes = now.getMinutes();
+    message.classList.add("message", "sent");
 
-      minutes = minutes < 10 ? "0" + minutes : minutes;
+    // Time
+    const now = new Date();
 
-      const ampm = hours >= 12 ? "PM" : "AM";
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
 
-      hours = hours % 12 || 12;
+    minutes = minutes < 10 ? "0" + minutes : minutes;
 
-      message.innerHTML = `
-        ${text}
-        <span class="time">${hours}:${minutes} ${ampm}</span>
-      `;
+    const ampm = hours >= 12 ? "PM" : "AM";
 
-      // Append
-      chatBox.appendChild(message);
+    hours = hours % 12 || 12;
 
-      // Auto scroll
-      chatBox.scrollTop = chatBox.scrollHeight;
+    message.innerHTML = `
+      ${text}
+      <span class="time">${hours}:${minutes} ${ampm}</span>
+    `;
 
-      // Clear input
-      messageInput.value = "";
+    // Append to UI
+    chatBox.appendChild(message);
 
-      // Fake reply
-      setTimeout(() => {
+    // Auto scroll
+    chatBox.scrollTop = chatBox.scrollHeight;
 
-        const reply = document.createElement("div");
-
-        reply.classList.add("message", "received");
-
-        reply.innerHTML = `
-          Nice message 🚀
-          <span class="time">${hours}:${minutes} ${ampm}</span>
-        `;
-
-        chatBox.appendChild(reply);
-
-        // Scroll again
-        chatBox.scrollTop = chatBox.scrollHeight;
-
-      }, 1000);
-
-    });
+    // Clear input
+    messageInput.value = "";
+  } catch (err) {
+    console.log(err);
+  }
+});

@@ -1,7 +1,7 @@
 const {DataTypes}=require("sequelize")
 const sequelize=require("../utils/dbConfiguration")
 
-const userModel= sequelize.define("user_table",{
+const User= sequelize.define("user_table",{
     id:{
         type:DataTypes.INTEGER,
         primaryKey:true,
@@ -23,4 +23,4 @@ const userModel= sequelize.define("user_table",{
     }
 })
 
-module.exports=userModel
+module.exports=User
