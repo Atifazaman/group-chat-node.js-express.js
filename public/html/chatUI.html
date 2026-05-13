@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Modern Chat UI</title>
+<link rel="stylesheet" href="../css/chat.css">
+</head>
+<body>
+
+  <div class="chat-container">
+
+    <div class="chat-header">
+      <div class="avatar">A</div>
+
+      <div class="user-info">
+        <h3>Alex</h3>
+        <p>Online</p>
+      </div>
+    </div>
+
+    <div class="chat-box" id="chatBox">
+
+      <div class="message received">
+        Hey 👋
+        <span class="time">10:21 AM</span>
+      </div>
+
+      <div class="message sent">
+        Hi! This UI looks cool 😎
+        <span class="time">10:22 AM</span>
+      </div>
+
+      <div class="message received">
+        Try sending a message below.
+        <span class="time">10:23 AM</span>
+      </div>
+
+    </div>
+
+    <form class="chat-input" id="chatForm">
+      <input 
+        type="text" 
+        id="messageInput"
+        placeholder="Type a message..."
+        autocomplete="off"
+      />
+
+      <button type="submit">➤</button>
+    </form>
+
+  </div>
+
+  <script src="/public/js/chat.js"></script>
+
+</body>
+</html>
