@@ -10,7 +10,6 @@ chatForm.addEventListener("submit", async (e) => {
   if (text === "") return;
 
   try {
-    // Send message to backend
     const response = await axios.post(
       "http://localhost:3000/chat/add-message",
       {
@@ -20,13 +19,9 @@ chatForm.addEventListener("submit", async (e) => {
     );
 
     console.log(response.data);
-
-    // Create UI message
     const message = document.createElement("div");
-
     message.classList.add("message", "sent");
 
-    // Time
     const now = new Date();
 
     let hours = now.getHours();
@@ -43,15 +38,72 @@ chatForm.addEventListener("submit", async (e) => {
       <span class="time">${hours}:${minutes} ${ampm}</span>
     `;
 
-    // Append to UI
     chatBox.appendChild(message);
-
-    // Auto scroll
     chatBox.scrollTop = chatBox.scrollHeight;
-
-    // Clear input
     messageInput.value = "";
   } catch (err) {
     console.log(err);
   }
 });
+window.addEventListener("DOMContentLoaded", getMessages);
+
+async function getMessages() {
+
+  try {
+    const response = await axios.get(
+      "http://localhost:3000/chat/messages"
+    );
+
+    const messages = response.data.messages;
+    chatBox.innerHTML = "";
+
+    messages.forEach((msg) => {
+
+      const message = document.createElement("div");
+      const currentUserId = 1;
+
+     if (Number(msg.userTableId) === Number(currentUserId)) {
+
+  message.classList.add("message", "sent");
+
+} else {
+
+  message.classList.add("message", "received");
+
+}
+      // Time formatting
+      const date = new Date(msg.createdAt);
+
+      let hours = date.getHours();
+      let minutes = date.getMinutes();
+
+      minutes = minutes < 10 ? "0" + minutes : minutes;
+
+      const ampm = hours >= 12 ? "PM" : "AM";
+
+      hours = hours % 12 || 12;
+
+      // Message UI
+      message.innerHTML = `
+        ${msg.message}
+        <span class="time">
+          ${hours}:${minutes} ${ampm}
+        </span>
+      `;
+
+      // Add to chat box
+      chatBox.appendChild(message);
+
+    });
+
+    // Auto scroll bottom
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+setInterval(() => {
+  getMessages();
+}, 3000);

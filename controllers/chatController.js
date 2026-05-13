@@ -38,7 +38,32 @@ const addMessage = async (req, res) => {
   }
 
 };
+const getMessages = async (req, res) => {
+
+  try {
+
+    const messages = await Chat.findAll({
+      order: [["createdAt", "ASC"]],
+    });
+
+    res.status(200).json({
+      success: true,
+      messages,
+    });
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+
+  }
+
+};
 
 module.exports = {
-  addMessage,
+  addMessage,getMessages
 };
