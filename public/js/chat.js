@@ -2,7 +2,56 @@ const chatForm = document.getElementById("chatForm");
 const messageInput = document.getElementById("messageInput");
 const chatBox = document.getElementById("chatBox");
 
+
+const socket = new WebSocket("ws://localhost:3000");
+
+window.addEventListener("DOMContentLoaded", getMessages);
+
+socket.onmessage = async (event) => {
+
+  const data = JSON.parse(event.data);
+
+  const message = document.createElement("div");
+
+
+  if (Number(data.userId) === 1) {
+
+    message.classList.add("message", "sent");
+
+  } else {
+
+    message.classList.add("message", "received");
+
+  }
+
+  const now = new Date();
+
+  let hours = now.getHours();
+
+  let minutes = now.getMinutes();
+
+  minutes = minutes < 10 ? "0" + minutes : minutes;
+
+  const ampm = hours >= 12 ? "PM" : "AM";
+
+  hours = hours % 12 || 12;
+
+
+  message.innerHTML = `
+    ${data.message}
+    <span class="time">
+      ${hours}:${minutes} ${ampm}
+    </span>
+  `;
+
+  chatBox.appendChild(message);
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+};
+
+
 chatForm.addEventListener("submit", async (e) => {
+
   e.preventDefault();
 
   const text = messageInput.value.trim();
@@ -10,71 +59,61 @@ chatForm.addEventListener("submit", async (e) => {
   if (text === "") return;
 
   try {
-    const response = await axios.post(
+
+    await axios.post(
       "http://localhost:3000/chat/add-message",
       {
         message: text,
         userId: 1,
-      },
+      }
     );
 
-    console.log(response.data);
-    const message = document.createElement("div");
-    message.classList.add("message", "sent");
+    socket.send(
+      JSON.stringify({
+        message: text,
+        userId: 1
+      })
+    );
 
-    const now = new Date();
-
-    let hours = now.getHours();
-    let minutes = now.getMinutes();
-
-    minutes = minutes < 10 ? "0" + minutes : minutes;
-
-    const ampm = hours >= 12 ? "PM" : "AM";
-
-    hours = hours % 12 || 12;
-
-    message.innerHTML = `
-      ${text}
-      <span class="time">${hours}:${minutes} ${ampm}</span>
-    `;
-
-    chatBox.appendChild(message);
-    chatBox.scrollTop = chatBox.scrollHeight;
     messageInput.value = "";
+
   } catch (err) {
+
     console.log(err);
+
   }
+
 });
-window.addEventListener("DOMContentLoaded", getMessages);
 
 async function getMessages() {
 
   try {
+
     const response = await axios.get(
       "http://localhost:3000/chat/messages"
     );
-
     const messages = response.data.messages;
+
     chatBox.innerHTML = "";
 
     messages.forEach((msg) => {
 
       const message = document.createElement("div");
-      const currentUserId = 1;
 
-     if (Number(msg.userTableId) === Number(currentUserId)) {
+      if (Number(msg.userTableId) === 1) {
 
-  message.classList.add("message", "sent");
+        message.classList.add("message", "sent");
 
-} else {
+      } else {
 
-  message.classList.add("message", "received");
+        message.classList.add("message", "received");
 
-}
-      // Time formatting
+      }
+
       const date = new Date(msg.createdAt);
 
       let hours = date.getHours();
+
       let minutes = date.getMinutes();
 
       minutes = minutes < 10 ? "0" + minutes : minutes;
@@ -83,7 +122,6 @@ async function getMessages() {
 
       hours = hours % 12 || 12;
 
-      // Message UI
       message.innerHTML = `
         ${msg.message}
         <span class="time">
@@ -91,19 +129,15 @@ async function getMessages() {
         </span>
       `;
 
-      // Add to chat box
       chatBox.appendChild(message);
 
     });
 
-    // Auto scroll bottom
     chatBox.scrollTop = chatBox.scrollHeight;
 
   } catch (err) {
+
     console.log(err);
+
   }
 }
-
-setInterval(() => {
-  getMessages();
-}, 3000);
