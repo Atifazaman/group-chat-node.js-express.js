@@ -1,5 +1,5 @@
 const http = require("http");
-const WebSocket = require("ws");
+const { Server } = require("socket.io");
 const express=require("express")
 const app=express()
 const cors=require("cors")
@@ -22,29 +22,27 @@ app.use("/chat",chatRouter)
 
 
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
-
-let sockets = [];
-
-wss.on("connection", (ws) => {
-    console.log("User connected");
-    sockets.push(ws);
-    ws.on("message", (message) => {
-        console.log(message.toString());
-        sockets.forEach((s) => {
-            if (s.readyState === WebSocket.OPEN) {
-                s.send(message.toString());
-            }
-        });
-    });
-
-    ws.on("close", () => {
-        console.log("User disconnected");
-        sockets = sockets.filter((s) => s !== ws);
-
-    });
-
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+    },
 });
+
+
+io.on("connection", (socket) => {
+    console.log("User connected",socket.id);
+
+    socket.on("message", (message) => {
+        console.log("user",socket.id,"said",message);
+
+        io.emit("message", message);
+    });
+
+    socket.on("disconnect", () => {
+        console.log("User disconnected");
+    });
+});
+
 
 db.sync({force:false}).then(()=>{
 server.listen(3000,()=>{

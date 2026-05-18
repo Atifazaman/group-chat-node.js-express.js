@@ -3,16 +3,15 @@ const messageInput = document.getElementById("messageInput");
 const chatBox = document.getElementById("chatBox");
 
 
-const socket = new WebSocket("ws://localhost:3000");
+const socket = io("http://localhost:3000");
+
 
 window.addEventListener("DOMContentLoaded", getMessages);
 
-socket.onmessage = async (event) => {
 
-  const data = JSON.parse(event.data);
+socket.on("message", (data) => {
 
   const message = document.createElement("div");
-
 
   if (Number(data.userId) === 1) {
 
@@ -36,7 +35,6 @@ socket.onmessage = async (event) => {
 
   hours = hours % 12 || 12;
 
-
   message.innerHTML = `
     ${data.message}
     <span class="time">
@@ -45,9 +43,10 @@ socket.onmessage = async (event) => {
   `;
 
   chatBox.appendChild(message);
+
   chatBox.scrollTop = chatBox.scrollHeight;
 
-};
+});
 
 
 chatForm.addEventListener("submit", async (e) => {
@@ -68,12 +67,10 @@ chatForm.addEventListener("submit", async (e) => {
       }
     );
 
-    socket.send(
-      JSON.stringify({
-        message: text,
-        userId: 1
-      })
-    );
+    socket.emit("message", {
+      message: text,
+      userId: 1
+    });
 
     messageInput.value = "";
 
@@ -85,6 +82,8 @@ chatForm.addEventListener("submit", async (e) => {
 
 });
 
+
+
 async function getMessages() {
 
   try {
@@ -92,6 +91,7 @@ async function getMessages() {
     const response = await axios.get(
       "http://localhost:3000/chat/messages"
     );
+
     const messages = response.data.messages;
 
     chatBox.innerHTML = "";
@@ -140,4 +140,5 @@ async function getMessages() {
     console.log(err);
 
   }
+
 }
