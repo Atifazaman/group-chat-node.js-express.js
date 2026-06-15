@@ -1,8 +1,8 @@
 const { Sequelize } = require("sequelize");
 
-const sequelize=new Sequelize("group_chat","root","aaaa",{
+const sequelize=new Sequelize(process.env.DB_NAME,process.env.DB_ROOT,process.env.DB_PASS,{
     dialect:"mysql",
-    host:"localhost"
+    host:process.env.DB_HOST
 });
 
 (async()=>{

@@ -1,23 +1,19 @@
 const Chat = require("../models/chatModel");
 
 const addMessage = async (req, res) => {
-
   try {
-
-    const { message, userId } = req.body;
+    const { message } = req.body;
 
     if (!message) {
-
       return res.status(400).json({
         success: false,
         message: "Message is required",
       });
-
     }
 
     const data = await Chat.create({
       message,
-      userTableId:userId,
+      userTableId: req.user.id,
     });
 
     res.status(201).json({
@@ -25,18 +21,14 @@ const addMessage = async (req, res) => {
       message: "Message stored successfully",
       data,
     });
-
   } catch (err) {
-
     console.log(err);
 
     res.status(500).json({
       success: false,
       error: err.message,
     });
-
   }
-
 };
 const getMessages = async (req, res) => {
 

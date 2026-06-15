@@ -1,62 +1,77 @@
 const bcrypt = require("bcrypt");
-const userModel = require("../models/userModel");
-
-const signUp = async (req, res) => {
+const jwt = require("jsonwebtoken");
+const userTable = require("../models/userModel");
+const signup = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
+    const normalizedEmail = email.toLowerCase();
 
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        message: "All fields are required",
-      });
-    }
+    const existUser = await userTable.findOne({
+      where: { email: normalizedEmail },
+    });
 
-    const normalizedEmail=email.toLowerCase()
-
-    const existingEmail = await userModel.findOne({ where: { email:normalizedEmail } });
-
-    if (existingEmail) {
-      return res.status(400).json({ message: "User already exists" });
+    if (existUser) {
+      const error = new Error("Email already exists!!");
+      error.statusCode = 409;
+      return next(error);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    await userModel.create({
+    await userTable.create({
       name,
-      email:normalizedEmail,
+      email: normalizedEmail,
       password: hashedPassword,
     });
-
-    res.status(201).json({ message: "User Signed Up Successfully!!" });
+    res.status(201).json({ message: "User Account Got Created Successfully" });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "User Signed Up failed!!" });
+    next(error);
   }
 };
 
-const login = async (req, res) => {
- try {
-   const {email,password}=req.body
-   
-   const normalizedEmail=email.toLowerCase()
-   const user=await userModel.findOne({where:{email:normalizedEmail}})
+const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    const normalizedEmail = email.toLowerCase();
 
-   if(!user){
-    return res.status(404).json({message:"User Not Found"})
-   }
-   const isMatch=await bcrypt.compare(password,user.password)
+    const userExist = await userTable.findOne({
+      where: { email: normalizedEmail },
+    });
 
-   if(!isMatch){
-    return res.status(401).json({message:"Email/Password is wrong"})
-   }
+    if (!userExist) {
+      const error = new Error("Invalid email or password");
+      error.statusCode = 401;
+      return next(error);
+    }
 
-   res.status(200).json({message:"Login Successful"})
- } catch (error) {
-  res.status(500).json({message:"Login Failed"})
-  console.log(error)
- }
+    const isMatch = await bcrypt.compare(password, userExist.password);
+
+    if (!isMatch) {
+      const error = new Error("Inavlid email or passwod!!");
+      error.statusCode = 401;
+      return next(error);
+    }
+
+    const token=jwt.sign(
+        {
+            id:userExist.id,
+            email:userExist.email
+        },
+        process.env.JWT_SECRET,
+        {
+            expiresIn:"15m"
+        }
+    )
+
+    res.status(200).json({
+      message: "Login successful",
+      token
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = {
-  signUp,
+  signup,
   login,
 };
