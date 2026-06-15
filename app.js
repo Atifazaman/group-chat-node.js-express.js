@@ -6,6 +6,7 @@ const cors=require("cors")
 require("dotenv").config()
 const jwt = require("jsonwebtoken");
 const userTable = require("./models/userModel");
+const socketIO=require("./socket_io")
 
 const db=require("./utils/dbConfiguration")
 require("./models/associations");
@@ -29,52 +30,13 @@ app.use(errorMiddleware)
 const server = http.createServer(app);
 
 // todo : set cross
-const io = new Server(server, {
-    cors: {
-        origin: "*",
-    },
-});
+const io=socketIO(server)
 
 // todo socket auth middleware 
-io.use(async (socket, next) => {
-  try {
-    const token = socket.handshake.auth.token;
-
-    if (!token) {
-      return next(new Error("No Token"));
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await userTable.findByPk(decoded.id);
-
-    if (!user) {
-      return next(new Error("User not found"));
-    }
-
-    socket.user = user;
-
-    next();
-  } catch (err) {
-    console.log("Socket Auth Error:", err.message);
-    next(err);
-  }
-});
 
 
-io.on("connection", (socket) => {
-    console.log("User connected",socket.id);
 
-    socket.on("message", (message) => {
-        console.log("user",socket.user.name,"said",message);
 
-        io.emit("message", message);
-    });
-
-    socket.on("disconnect", () => {
-        console.log("User disconnected");
-    });
-});
 
 
 db.sync({force:false}).then(()=>{
