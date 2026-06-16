@@ -1,4 +1,5 @@
 const Chat = require("../models/chatModel");
+const userTable=require("../models/userModel")
 
 const addMessage = async (req, res) => {
   try {
@@ -56,6 +57,26 @@ const getMessages = async (req, res) => {
 
 };
 
+const searchUser = async (req, res) => {
+  try {
+    const email = req.query.email;
+
+    const user = await userTable.findOne({
+      where: { email },
+      attributes: ["id", "name", "email"]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user);
+
+  } catch (err) {
+    res.status(500).json(err);
+  }
+};
+
 module.exports = {
-  addMessage,getMessages
+  addMessage,getMessages, searchUser
 };

@@ -8,6 +8,53 @@
 </head>
 <body>
 
+   
+  <div class="container">
+   
+
+  <!-- Left Search Sidebar -->
+
+    <div class="sidebar">
+
+    <div class="sidebar-header">
+      Find User By Email
+    </div>
+
+    <div class="search-box">
+      <form id="searchForm">
+        <input type="email" id="emailInput" placeholder="Enter email" />
+        <button type="submit">Search</button>
+        <button id="groupBtn">Group Chat</button>
+      </form>
+    </div>
+     
+    <div id="userList" class="search-results">
+
+      <!-- Demo Users -->
+      <div class="user-card">
+        <div class="user-avatar">A</div>
+        <div class="user-details">
+          <h4>Atifa Zaman</h4>
+          <p>atifa@example.com</p>
+        </div>
+      </div>
+
+      <div class="user-card">
+        <div class="user-avatar">R</div>
+        <div class="user-details">
+          <h4>Rahul Sharma</h4>
+          <p>rahul@gmail.com</p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+
+   <!-- Chat Area -->
+  
+
   <div class="chat-container">
 
     <div class="chat-header">
@@ -50,6 +97,8 @@
     </form>
 
   </div>
+
+</div>
 
 <script src="http://localhost:3000/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>

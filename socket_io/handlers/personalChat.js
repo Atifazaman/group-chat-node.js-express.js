@@ -1,22 +1,25 @@
+module.exports = (socket, io) => {
 
+    console.log("User connected", socket.user.id);
 
-module.exports=(socket,io)=>{
+    socket.on("join-room", (roomName) => {
+        socket.join(roomName);
+        console.log(`${socket.user.name} joined ${roomName}`);
+    });
 
-      console.log("User connected",socket.user.id);
+    socket.on("personal-message", ({ message, roomName }) => {
 
-    socket.on("join-room",(roomName)=>{
-     socket.join(roomName)
-    })
+        io.to(roomName).emit("personal-message", {
+            senderId: socket.user.id,
+            senderName: socket.user.name,
+            message,
+            createdAt: new Date()
+        });
 
-    socket.on("personal-message", ({message,roomName}) => {
-        console.log("user",socket.user.name,"said",message);
-
-        io.emit("personal-message", message);
     });
 
     socket.on("disconnect", () => {
         console.log("User disconnected");
     });
 
-}
-
+};
