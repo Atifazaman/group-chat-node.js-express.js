@@ -5,12 +5,15 @@ const chatBox = document.getElementById("chatBox");
 const form = document.getElementById("searchForm");
 const emailInput = document.getElementById("emailInput");
 const userList = document.getElementById("userList");
-const groupBtn = document.getElementById("groupBtn");
+
+const createGroupBtn = document.getElementById("createGroupBtn");
 
 const token = localStorage.getItem("token");
 
 let currentRoom = "";
-let chatType = "group";
+let currentGroupId = null;
+let chatType = "broadcast";
+let selectedUsers = [];
 
 if (!token) {
   window.location.href = "/login.html";
@@ -34,9 +37,15 @@ socket.on("connect_error", (err) => {
   console.log("Socket error:", err.message);
 });
 
-window.addEventListener("DOMContentLoaded", getMessages);
+window.addEventListener("DOMContentLoaded", () => {
+  getMessages();
+  loadGroups();
+});
 
 socket.on("message", (data) => {
+
+  console.log("broadcast data:", data);
+
   const message = document.createElement("div");
 
   if (Number(data.userId) === Number(currentUserId)) {
@@ -45,23 +54,38 @@ socket.on("message", (data) => {
     message.classList.add("message", "received");
   }
 
-  const now = new Date();
 
-  let hours = now.getHours();
-  let minutes = now.getMinutes();
+  const date = new Date(data.createdAt);
+
+  let hours = date.getHours();
+  let minutes = date.getMinutes();
 
   minutes = minutes < 10 ? "0" + minutes : minutes;
 
   const ampm = hours >= 12 ? "PM" : "AM";
   hours = hours % 12 || 12;
 
+
   message.innerHTML = `
-    ${data.message}
-    <span class="time">${hours}:${minutes} ${ampm}</span>
+
+    ${
+      Number(data.userId) !== Number(currentUserId)
+      ? `<div class="sender-name">${data.senderName}</div>`
+      : ""
+    }
+
+    <div>${data.message}</div>
+
+    <span class="time">
+      ${hours}:${minutes} ${ampm}
+    </span>
+
   `;
+
 
   chatBox.appendChild(message);
   chatBox.scrollTop = chatBox.scrollHeight;
+
 });
 
 socket.on("personal-message", (data) => {
@@ -81,8 +105,6 @@ socket.on("personal-message", (data) => {
   }
 
 
-  console.log(message.className); // DEBUG
-
   const date = new Date(data.createdAt);
 
   let hours = date.getHours();
@@ -101,6 +123,46 @@ socket.on("personal-message", (data) => {
   chatBox.appendChild(message);
 });
 
+socket.on("group-message", (data) => {
+
+  const message = document.createElement("div");
+
+  if (Number(data.senderId) === Number(currentUserId)) {
+    message.classList.add("message", "sent");
+  } else {
+    message.classList.add("message", "received");
+  }
+
+  const date = new Date(data.createdAt);
+
+  let hours = date.getHours();
+  let minutes = date.getMinutes();
+
+  minutes = minutes < 10 ? "0" + minutes : minutes;
+
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+
+
+  message.innerHTML = `
+
+    ${
+      Number(data.senderId) !== Number(currentUserId)
+        ? `<div class="sender-name">${data.senderName}</div>`
+        : ""
+    }
+
+    <div>${data.message}</div>
+
+    <span class="time">
+      ${hours}:${minutes} ${ampm}
+    </span>
+
+  `;
+
+  chatBox.appendChild(message);
+});
+
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -109,7 +171,7 @@ chatForm.addEventListener("submit", async (e) => {
   if (!text) return;
 
   try {
-    if (chatType === "group") {
+    if (chatType === "broadcast") {
 
   await axios.post(
     "http://localhost:3000/chat/add-message",
@@ -121,11 +183,21 @@ chatForm.addEventListener("submit", async (e) => {
     }
   );
 
-  socket.emit("message", {
-    message: text,
-    userId: currentUserId,
-  });
+socket.emit("message", {
+    message:text
+});
 
+}else if (chatType === "group") {
+
+  if (!currentGroupId) {
+    alert("Please select a group");
+    return;
+  }
+
+  socket.emit("group-message", {
+    groupId: currentGroupId,
+    message: text,
+  });
 } else {
 
   socket.emit("personal-message", {
@@ -173,10 +245,21 @@ async function getMessages() {
       const ampm = hours >= 12 ? "PM" : "AM";
       hours = hours % 12 || 12;
 
-      message.innerHTML = `
-        ${msg.message}
-        <span class="time">${hours}:${minutes} ${ampm}</span>
-      `;
+message.innerHTML = `
+
+${
+  Number(msg.userTableId) !== Number(currentUserId)
+    ? `<div class="sender-name">${msg.user_table?.name || ""}</div>`
+    : ""
+}
+
+<div>${msg.message}</div>
+
+<span class="time">
+${hours}:${minutes} ${ampm}
+</span>
+
+`;
 
       chatBox.appendChild(message);
     });
@@ -187,17 +270,178 @@ async function getMessages() {
   }
 }
 
-groupBtn.addEventListener("click", () => {
-  chatType = "group";
-  currentRoom = "";
+
+
+createGroupBtn.addEventListener("click", async () => {
+
+  const groupName =
+    prompt("Enter Group Name");
+
+  if (!groupName) return;
+
+  const response = await axios.post(
+    "http://localhost:3000/chat/group/create",
+    {
+      name: groupName,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  const group = response.data.group;
+
+joinGroup(group.id);
+
+loadGroups();
 });
+
+
+
+async function loadGroups() {
+
+  const response = await axios.get(
+    "http://localhost:3000/chat/group/my-groups",
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  userList.innerHTML = "";
+
+  response.data.forEach(group => {
+
+    const div =
+      document.createElement("div");
+
+    div.classList.add("user-card");
+
+    div.innerHTML = `
+      <div class="user-avatar">G</div>
+      <div class="user-details">
+        <h4>${group.name}</h4>
+        
+      </div>
+      <button class="addMemberBtn">Add Member</button>
+    `;
+const addBtn = div.querySelector(".addMemberBtn");
+
+addBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+
+  currentGroupId = group.id;
+
+  document.getElementById("memberModal").style.display = "block";
+});
+
+    div.addEventListener("click", () => {
+      joinGroup(group.id);
+    });
+
+    userList.appendChild(div);
+
+  });
+}
+
+const memberSearch =
+  document.getElementById("memberSearch");
+ 
+const suggestions =
+  document.getElementById("suggestions");
+const closeModalBtn=document.getElementById("closeModal")
+const memberModal=document.getElementById("memberModal")
+
+closeModalBtn.addEventListener("click", () => {
+  memberModal.style.display =
+    memberModal.style.display === "block"
+      ? "none"
+      : "block";
+});
+ 
+memberSearch.addEventListener("input", async () => {
+ 
+  const query = memberSearch.value.trim();
+ 
+  if (query.length < 2) {
+    suggestions.innerHTML = "";
+    return;
+  }
+ 
+  const response = await axios.get(
+    `http://localhost:3000/chat/search-user?query=${query}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+ 
+  suggestions.innerHTML = "";
+ 
+  response.data.forEach(user => {
+ 
+    const div = document.createElement("div");
+    div.classList.add("suggestion-item");
+ 
+    div.innerHTML = `
+      <span>${user.name} (${user.email})</span>
+      <button class="addUserBtn">Add</button>
+    `;
+ 
+    const addBtn = div.querySelector(".addUserBtn");
+ 
+    addBtn.addEventListener("click", async () => {
+ 
+      addBtn.disabled = true;
+      addBtn.textContent = "Adding...";
+ 
+      try {
+ 
+        await axios.post(
+          "http://localhost:3000/chat/group/add-member",
+          {
+            groupId: currentGroupId,
+            userId: user.id
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+ 
+        addBtn.textContent = "Added";
+ 
+      } catch (err) {
+ 
+        if (err.response && err.response.status === 409) {
+          addBtn.textContent = "Already added";
+        } else {
+          console.log(err);
+          addBtn.disabled = false;
+          addBtn.textContent = "Add";
+          alert("Could not add user. Please try again.");
+        }
+ 
+      }
+ 
+    });
+ 
+    suggestions.appendChild(div);
+ 
+  });
+ 
+});
+
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const email = emailInput.value;
-
-  const token = localStorage.getItem("token");
 
   const response = await axios.get(
     `http://localhost:3000/chat/search-user?email=${email}`,
@@ -252,3 +496,68 @@ function displayUser(user) {
   userList.appendChild(div);
 }
 
+
+async function joinGroup(groupId) {
+
+  chatType = "group";
+  currentGroupId = groupId;
+
+  socket.emit("join-group", groupId);
+
+  chatBox.innerHTML = "";
+
+
+  const response = await axios.get(
+    `http://localhost:3000/chat/group/${groupId}/messages`,
+    {
+      headers:{
+        Authorization:`Bearer ${token}`
+      }
+    }
+  );
+
+
+response.data.messages.forEach(msg => {
+
+  const div = document.createElement("div");
+
+
+  if (Number(msg.userId) === Number(currentUserId)) {
+    div.classList.add("message", "sent");
+  } else {
+    div.classList.add("message", "received");
+  }
+
+
+  const date = new Date(msg.createdAt);
+
+  let hours = date.getHours();
+  let minutes = date.getMinutes();
+
+  minutes = minutes < 10 ? "0" + minutes : minutes;
+
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+
+
+  div.innerHTML = `
+
+    ${
+      Number(msg.userId) !== Number(currentUserId)
+      ? `<div class="sender-name">${msg.sender?.name || ""}</div>`
+      : ""
+    }
+
+    <div>${msg.message}</div>
+
+    <span class="time">
+      ${hours}:${minutes} ${ampm}
+    </span>
+
+  `;
+
+  chatBox.appendChild(div);
+
+});
+
+}

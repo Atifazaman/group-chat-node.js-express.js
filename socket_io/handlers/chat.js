@@ -1,18 +1,35 @@
+module.exports = (socket, io) => {
+
+    console.log("User connected", socket.user.id);
 
 
-module.exports=(socket,io)=>{
+    socket.on("message", (data) => {
 
-      console.log("User connected",socket.user.id);
+        console.log(
+            "user",
+            socket.user.name,
+            "said",
+            data.message
+        );
 
-    socket.on("message", (message) => {
-        console.log("user",socket.user.name,"said",message);
 
-        io.emit("message", message);
+        io.emit("message", {
+
+            userId: socket.user.id,
+
+            senderName: socket.user.name,
+
+            message: data.message,
+
+            createdAt: new Date()
+
+        });
+
     });
+
 
     socket.on("disconnect", () => {
         console.log("User disconnected");
     });
 
-}
-
+};

@@ -24,27 +24,16 @@
       <form id="searchForm">
         <input type="email" id="emailInput" placeholder="Enter email" />
         <button type="submit">Search</button>
-        <button id="groupBtn">Group Chat</button>
+        <button type="button" id="createGroupBtn" >Create Group </button>
       </form>
     </div>
+
+<div id="groupList"></div>
      
     <div id="userList" class="search-results">
 
       <!-- Demo Users -->
-      <div class="user-card">
-        <div class="user-avatar">A</div>
-        <div class="user-details">
-          <h4>Atifa Zaman</h4>
-          <p>atifa@example.com</p>
-        </div>
-      </div>
-
-      <div class="user-card">
-        <div class="user-avatar">R</div>
-        <div class="user-details">
-          <h4>Rahul Sharma</h4>
-          <p>rahul@gmail.com</p>
-        </div>
+    
       </div>
 
     </div>
@@ -61,8 +50,7 @@
       <div class="avatar">A</div>
 
       <div class="user-info">
-        <h3>Alex</h3>
-        <p>Online</p>
+        <h3>ALL</h3>
       </div>
     </div>
 
@@ -98,6 +86,24 @@
 
   </div>
 
+</div>
+
+<div id="memberModal" class="modal">
+  <div class="modal-content">
+
+    <h3>Add Member</h3>
+
+    <input
+      type="text"
+      id="memberSearch"
+      placeholder="Search user..."
+    >
+
+     <div id="suggestions"></div>
+
+    <button id="closeModal">Close</button>
+
+  </div>
 </div>
 
 <script src="http://localhost:3000/socket.io/socket.io.js"></script>
