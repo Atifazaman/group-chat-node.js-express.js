@@ -3,8 +3,10 @@ const userTable=require("../models/userModel")
 const Group = require("../models/groupModel");
 const GroupMember = require("../models/groupMemberModel");
 const GroupMessage = require("../models/groupMessageModel");
+const axios = require("axios");
 
 const { Op } = require("sequelize")
+
 
 const addMessage = async (req, res) => {
   try {
@@ -356,11 +358,130 @@ const getUsers = async (req, res) => {
   }
 };
 
+
+
+const getSuggestions = async (req, res) => {
+  try {
+
+    const { text } = req.body;
+
+    const prompt = `
+You are a predictive typing assistant.
+
+Message:
+"${text}"
+
+Generate exactly 3 short next-word or next-phrase suggestions.
+
+Return ONLY a JSON array.
+
+Example:
+["tomorrow","at 5 PM","in the office"]
+`;
+
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ]
+      }
+    );
+
+    const result =
+      response.data.candidates[0].content.parts[0].text;
+
+    const suggestions = JSON.parse(
+      result.replace(/```json|```/g, "").trim()
+    );
+
+    res.status(200).json({
+      suggestions
+    });
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      success: false,
+      message: "Error generating suggestions"
+    });
+
+  }
+};
+
+
+const getSmartReplies = async (req, res) => {
+  try {
+
+    const { message } = req.body;
+
+    const prompt = `
+You are a chat assistant.
+
+Incoming message:
+"${message}"
+
+Generate exactly 3 short reply options.
+
+Return ONLY a JSON array.
+
+Example:
+["Sure","I'll be there","Can we reschedule?"]
+`;
+
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ]
+      }
+    );
+
+    const result =
+      response.data.candidates[0].content.parts[0].text;
+
+    const replies = JSON.parse(
+      result.replace(/```json|```/g, "").trim()
+    );
+
+    res.status(200).json({
+      replies
+    });
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      success: false,
+      message: "Error generating smart replies"
+    });
+
+  }
+};
+
 module.exports = {
   addMessage,getMessages, searchUser,  createGroup,
   getMyGroups,
   addMember,
   addGroupMessage,
   getGroupMessages,
-  getUsers
+  getUsers,
+  getSuggestions,
+  getSmartReplies
 };

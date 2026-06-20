@@ -34,5 +34,8 @@ router.get(
  chatController.getGroupMessages
 );
 
+router.post("/suggestions", auth, chatController.getSuggestions);
+
+router.post("/smart-replies", auth, chatController.getSmartReplies);
 
 module.exports = router;

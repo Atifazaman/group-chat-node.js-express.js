@@ -13,6 +13,7 @@
   "dependencies": {
     "@aws-sdk/s3-request-presigner": "^3.1071.0",
     "aws-sdk": "^2.1693.0",
+    "axios": "^1.18.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

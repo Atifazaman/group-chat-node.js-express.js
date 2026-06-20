@@ -299,4 +299,26 @@
     display:block;
     margin-top:8px;
 }
+
+.ai-suggestions,
+.smart-replies {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  flex-wrap: wrap;
+}
+
+.ai-suggestions button,
+.smart-replies button {
+  border: none;
+  padding: 6px 12px;
+  border-radius: 15px;
+  cursor: pointer;
+  background: #e9ecef;
+}
+
+.ai-suggestions button:hover,
+.smart-replies button:hover {
+  background: #d6d8db;
+}
    

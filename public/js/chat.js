@@ -1,4 +1,6 @@
 const chatForm = document.getElementById("chatForm");
+const predictiveSuggestions = document.getElementById("predictiveSuggestions");
+const smartReplies = document.getElementById("smartReplies");
 const messageInput = document.getElementById("messageInput");
 const chatBox = document.getElementById("chatBox");
 
@@ -69,7 +71,7 @@ window.addEventListener("DOMContentLoaded", () => {
   loadGroups();
 });
 
-socket.on("message", (data) => {
+socket.on("message", async(data) => {
   console.log("broadcast data:", data);
 
   const message = document.createElement("div");
@@ -110,9 +112,14 @@ ${getFileHTML(data.fileUrl, data.fileType)}
 
   chatBox.appendChild(message);
   chatBox.scrollTop = chatBox.scrollHeight;
+
+    if (Number(data.userId) !== Number(currentUserId)) {
+    await loadSmartReplies(data.message);
+  }
+
 });
 
-socket.on("personal-message", (data) => {
+socket.on("personal-message", async(data) => {
   console.log(data);
 
   console.log("senderId:", data.senderId);
@@ -146,9 +153,12 @@ ${getFileHTML(data.fileUrl, data.fileType)}
   `;
 
   chatBox.appendChild(message);
+    if (Number(data.senderId) !== Number(currentUserId)) {
+    await loadSmartReplies(data.message);
+  }
 });
 
-socket.on("group-message", (data) => {
+socket.on("group-message", async(data) => {
   const message = document.createElement("div");
 
   if (Number(data.senderId) === Number(currentUserId)) {
@@ -186,6 +196,9 @@ ${getFileHTML(data.fileUrl, data.fileType)}
   `;
 
   chatBox.appendChild(message);
+  if (Number(data.senderId) !== Number(currentUserId)) {
+    await loadSmartReplies(data.message);
+  }
 });
 
 chatForm.addEventListener("submit", async (e) => {
@@ -602,3 +615,91 @@ mediaFile.onchange = async () => {
     sendBtn.disabled = false;
   }
 };
+
+
+let typingTimer;
+
+messageInput.addEventListener("input", () => {
+
+  clearTimeout(typingTimer);
+
+  const text = messageInput.value.trim();
+
+  if (text.length < 3) {
+    predictiveSuggestions.innerHTML = "";
+    return;
+  }
+
+  typingTimer = setTimeout(async () => {
+
+    try {
+
+      const response = await axios.post(
+        "http://localhost:3000/chat/suggestions",
+        { text },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      predictiveSuggestions.innerHTML = "";
+
+      response.data.suggestions.forEach(item => {
+
+        const btn =
+          document.createElement("button");
+
+        btn.textContent = item;
+
+        btn.addEventListener("click", () => {
+          messageInput.value =
+            messageInput.value + " " + item;
+        });
+
+        predictiveSuggestions.appendChild(btn);
+      });
+
+    } catch (err) {
+      console.log(err);
+    }
+
+  }, 2500);
+
+});
+
+async function loadSmartReplies(message) {
+
+  try {
+
+    const response = await axios.post(
+      "http://localhost:3000/chat/smart-replies",
+      { message },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    smartReplies.innerHTML = "";
+
+    response.data.replies.forEach(reply => {
+
+      const btn =
+        document.createElement("button");
+
+      btn.textContent = reply;
+
+      btn.addEventListener("click", () => {
+        messageInput.value = reply;
+      });
+
+      smartReplies.appendChild(btn);
+    });
+
+  } catch (err) {
+    console.log(err);
+  }
+}
