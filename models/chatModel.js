@@ -13,6 +13,15 @@ const Chat = sequelize.define("chat", {
     type: DataTypes.TEXT,
     allowNull: false,
   },
+  fileUrl: {
+type: DataTypes.TEXT,
+ allowNull:true
+},
+
+fileType:{
+ type:DataTypes.STRING,
+ allowNull:true
+}
 });
 
 module.exports = Chat;

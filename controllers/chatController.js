@@ -8,19 +8,26 @@ const { Op } = require("sequelize")
 
 const addMessage = async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, fileUrl, fileType } = req.body;
 
-    if (!message) {
-      return res.status(400).json({
-        success: false,
-        message: "Message is required",
-      });
-    }
+   if (!message && !fileUrl) {
+  return res.status(400).json({
+    success: false,
+    message: "Message or file is required",
+  });
+}
 
-    const data = await Chat.create({
-      message,
-      userTableId: req.user.id,
-    });
+   const data = await Chat.create({
+
+  message,
+
+  fileUrl,
+
+  fileType,
+
+  userTableId: req.user.id,
+
+});
 
     res.status(201).json({
       success: true,
@@ -249,16 +256,22 @@ const addGroupMessage = async(req,res)=>{
 
  try{
 
-    const {groupId,message}=req.body;
+    const {groupId,message,fileUrl,fileType}=req.body;
 
 
-    const data = await GroupMessage.create({
+   const data = await GroupMessage.create({
 
-      groupId,
-      userId:req.user.id,
-      message
+  groupId,
 
-    });
+  userId:req.user.id,
+
+  message,
+
+  fileUrl,
+
+  fileType
+
+});
 
 
     res.status(201).json({

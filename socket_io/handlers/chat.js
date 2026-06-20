@@ -20,6 +20,9 @@ module.exports = (socket, io) => {
             senderName: socket.user.name,
 
             message: data.message,
+                fileUrl: data.fileUrl,
+
+            fileType: data.fileType,
 
             createdAt: new Date()
 
@@ -33,3 +36,4 @@ module.exports = (socket, io) => {
     });
 
 };
+

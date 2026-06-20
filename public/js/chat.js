@@ -5,6 +5,7 @@ const chatBox = document.getElementById("chatBox");
 const form = document.getElementById("searchForm");
 const emailInput = document.getElementById("emailInput");
 const userList = document.getElementById("userList");
+const sendBtn = document.getElementById("sendBtn");
 
 const createGroupBtn = document.getElementById("createGroupBtn");
 
@@ -14,14 +15,40 @@ let currentRoom = "";
 let currentGroupId = null;
 let chatType = "broadcast";
 let selectedUsers = [];
+let uploading = false;
+let uploadedFileUrl = null;
+let uploadedFileType = null;
 
 if (!token) {
   window.location.href = "/login.html";
 }
 
 const payload = JSON.parse(atob(token.split(".")[1]));
-const currentUserId = payload.id; 
+const currentUserId = payload.id;
 
+function getFileHTML(fileUrl, fileType) {
+  if (!fileUrl) return "";
+
+  console.log("FILE HTML:", fileUrl, fileType);
+
+
+  if (fileType && fileType.startsWith("image")) {
+    return `
+        <img 
+        src="${fileUrl}"
+        class="chat-image"
+        onload="console.log('IMAGE LOADED')"
+        onerror="console.log('IMAGE FAILED')"
+      />
+    `;
+  }
+
+  return `
+    <a href="${fileUrl}" target="_blank">
+      📎 Open File
+    </a>
+  `;
+}
 
 const socket = io("http://localhost:3000", {
   auth: {
@@ -43,7 +70,6 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 socket.on("message", (data) => {
-
   console.log("broadcast data:", data);
 
   const message = document.createElement("div");
@@ -54,7 +80,6 @@ socket.on("message", (data) => {
     message.classList.add("message", "received");
   }
 
-
   const date = new Date(data.createdAt);
 
   let hours = date.getHours();
@@ -65,16 +90,17 @@ socket.on("message", (data) => {
   const ampm = hours >= 12 ? "PM" : "AM";
   hours = hours % 12 || 12;
 
-
   message.innerHTML = `
 
     ${
       Number(data.userId) !== Number(currentUserId)
-      ? `<div class="sender-name">${data.senderName}</div>`
-      : ""
+        ? `<div class="sender-name">${data.senderName}</div>`
+        : ""
     }
 
-    <div>${data.message}</div>
+    <div>${data.message || ""}</div>
+
+${getFileHTML(data.fileUrl, data.fileType)}
 
     <span class="time">
       ${hours}:${minutes} ${ampm}
@@ -82,28 +108,24 @@ socket.on("message", (data) => {
 
   `;
 
-
   chatBox.appendChild(message);
   chatBox.scrollTop = chatBox.scrollHeight;
-
 });
 
 socket.on("personal-message", (data) => {
+  console.log(data);
 
-  console.log(data); 
-
-    console.log("senderId:", data.senderId);
+  console.log("senderId:", data.senderId);
   console.log("currentUserId:", currentUserId);
 
   const message = document.createElement("div");
- if (Number(data.senderId) === Number(currentUserId)) {
+  if (Number(data.senderId) === Number(currentUserId)) {
     console.log("ADDING SENT");
     message.classList.add("message", "sent");
   } else {
     console.log("ADDING RECEIVED");
     message.classList.add("message", "received");
   }
-
 
   const date = new Date(data.createdAt);
 
@@ -116,7 +138,10 @@ socket.on("personal-message", (data) => {
   hours = hours % 12 || 12;
 
   message.innerHTML = `
-      ${data.message}
+     
+<div>${data.message || ""}</div>
+
+${getFileHTML(data.fileUrl, data.fileType)}
       <span class="time">${hours}:${minutes} ${ampm}</span>
   `;
 
@@ -124,7 +149,6 @@ socket.on("personal-message", (data) => {
 });
 
 socket.on("group-message", (data) => {
-
   const message = document.createElement("div");
 
   if (Number(data.senderId) === Number(currentUserId)) {
@@ -143,7 +167,6 @@ socket.on("group-message", (data) => {
   const ampm = hours >= 12 ? "PM" : "AM";
   hours = hours % 12 || 12;
 
-
   message.innerHTML = `
 
     ${
@@ -152,7 +175,9 @@ socket.on("group-message", (data) => {
         : ""
     }
 
-    <div>${data.message}</div>
+   <div>${data.message || ""}</div>
+
+${getFileHTML(data.fileUrl, data.fileType)}
 
     <span class="time">
       ${hours}:${minutes} ${ampm}
@@ -165,49 +190,65 @@ socket.on("group-message", (data) => {
 
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-
-  const text = messageInput.value.trim();
-
-  if (!text) return;
-
-  try {
-    if (chatType === "broadcast") {
-
-  await axios.post(
-    "http://localhost:3000/chat/add-message",
-    { message: text },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-
-socket.emit("message", {
-    message:text
-});
-
-}else if (chatType === "group") {
-
-  if (!currentGroupId) {
-    alert("Please select a group");
+  if (uploading) {
+    alert("File is still uploading...");
     return;
   }
 
-  socket.emit("group-message", {
-    groupId: currentGroupId,
-    message: text,
-  });
-} else {
+  const text = messageInput.value.trim();
 
-  socket.emit("personal-message", {
-    message: text,
-    roomName: currentRoom
-  });
+  if (!text && !uploadedFileUrl) return;
 
-}
+  try {
+    console.log("Sending:", uploadedFileUrl, uploadedFileType);
+    if (chatType === "broadcast") {
+      await axios.post(
+        "http://localhost:3000/chat/add-message",
+        {
+          message: text,
+          fileUrl: uploadedFileUrl,
+          fileType: uploadedFileType,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      
+
+      socket.emit("message", {
+        message: text,
+        fileUrl: uploadedFileUrl,
+        fileType: uploadedFileType,
+      });
+    } else if (chatType === "group") {
+      if (!currentGroupId) {
+        alert("Please select a group");
+        return;
+      }
+
+      socket.emit("group-message", {
+        groupId: currentGroupId,
+        message: text,
+        fileUrl: uploadedFileUrl,
+        fileType: uploadedFileType,
+      });
+    } else {
+      socket.emit("personal-message", {
+        message: text,
+        roomName: currentRoom,
+        fileUrl: uploadedFileUrl,
+        fileType: uploadedFileType,
+      });
+    }
 
     messageInput.value = "";
+
+    uploadedFileUrl = null;
+    uploadedFileType = null;
+    mediaFile.value = "";
   } catch (err) {
     console.log(err);
   }
@@ -215,14 +256,11 @@ socket.emit("message", {
 
 async function getMessages() {
   try {
-    const response = await axios.get(
-      "http://localhost:3000/chat/messages",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await axios.get("http://localhost:3000/chat/messages", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     chatBox.innerHTML = "";
 
@@ -245,7 +283,7 @@ async function getMessages() {
       const ampm = hours >= 12 ? "PM" : "AM";
       hours = hours % 12 || 12;
 
-message.innerHTML = `
+      message.innerHTML = `
 
 ${
   Number(msg.userTableId) !== Number(currentUserId)
@@ -253,7 +291,9 @@ ${
     : ""
 }
 
-<div>${msg.message}</div>
+<div>${msg.message || ""}</div>
+
+${getFileHTML(msg.fileUrl, msg.fileType)}
 
 <span class="time">
 ${hours}:${minutes} ${ampm}
@@ -270,12 +310,8 @@ ${hours}:${minutes} ${ampm}
   }
 }
 
-
-
 createGroupBtn.addEventListener("click", async () => {
-
-  const groupName =
-    prompt("Enter Group Name");
+  const groupName = prompt("Enter Group Name");
 
   if (!groupName) return;
 
@@ -286,37 +322,32 @@ createGroupBtn.addEventListener("click", async () => {
     },
     {
       headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
+        Authorization: `Bearer ${token}`,
+      },
+    },
   );
 
   const group = response.data.group;
 
-joinGroup(group.id);
+  joinGroup(group.id);
 
-loadGroups();
+  loadGroups();
 });
 
-
-
 async function loadGroups() {
-
   const response = await axios.get(
     "http://localhost:3000/chat/group/my-groups",
     {
       headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
+        Authorization: `Bearer ${token}`,
+      },
+    },
   );
 
   userList.innerHTML = "";
 
-  response.data.forEach(group => {
-
-    const div =
-      document.createElement("div");
+  response.data.forEach((group) => {
+    const div = document.createElement("div");
 
     div.classList.add("user-card");
 
@@ -328,96 +359,85 @@ async function loadGroups() {
       </div>
       <button class="addMemberBtn">Add Member</button>
     `;
-const addBtn = div.querySelector(".addMemberBtn");
+    const addBtn = div.querySelector(".addMemberBtn");
 
-addBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
+    addBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
 
-  currentGroupId = group.id;
+      currentGroupId = group.id;
 
-  document.getElementById("memberModal").style.display = "block";
-});
+      document.getElementById("memberModal").style.display = "block";
+    });
 
     div.addEventListener("click", () => {
       joinGroup(group.id);
     });
 
     userList.appendChild(div);
-
   });
 }
 
-const memberSearch =
-  document.getElementById("memberSearch");
- 
-const suggestions =
-  document.getElementById("suggestions");
-const closeModalBtn=document.getElementById("closeModal")
-const memberModal=document.getElementById("memberModal")
+const memberSearch = document.getElementById("memberSearch");
+
+const suggestions = document.getElementById("suggestions");
+const closeModalBtn = document.getElementById("closeModal");
+const memberModal = document.getElementById("memberModal");
 
 closeModalBtn.addEventListener("click", () => {
   memberModal.style.display =
-    memberModal.style.display === "block"
-      ? "none"
-      : "block";
+    memberModal.style.display === "block" ? "none" : "block";
 });
- 
+
 memberSearch.addEventListener("input", async () => {
- 
   const query = memberSearch.value.trim();
- 
+
   if (query.length < 2) {
     suggestions.innerHTML = "";
     return;
   }
- 
+
   const response = await axios.get(
     `http://localhost:3000/chat/search-user?query=${query}`,
     {
       headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
+        Authorization: `Bearer ${token}`,
+      },
+    },
   );
- 
+
   suggestions.innerHTML = "";
- 
-  response.data.forEach(user => {
- 
+
+  response.data.forEach((user) => {
     const div = document.createElement("div");
     div.classList.add("suggestion-item");
- 
+
     div.innerHTML = `
       <span>${user.name} (${user.email})</span>
       <button class="addUserBtn">Add</button>
     `;
- 
+
     const addBtn = div.querySelector(".addUserBtn");
- 
+
     addBtn.addEventListener("click", async () => {
- 
       addBtn.disabled = true;
       addBtn.textContent = "Adding...";
- 
+
       try {
- 
         await axios.post(
           "http://localhost:3000/chat/group/add-member",
           {
             groupId: currentGroupId,
-            userId: user.id
+            userId: user.id,
           },
           {
             headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
+              Authorization: `Bearer ${token}`,
+            },
+          },
         );
- 
+
         addBtn.textContent = "Added";
- 
       } catch (err) {
- 
         if (err.response && err.response.status === 409) {
           addBtn.textContent = "Already added";
         } else {
@@ -426,17 +446,12 @@ memberSearch.addEventListener("input", async () => {
           addBtn.textContent = "Add";
           alert("Could not add user. Please try again.");
         }
- 
       }
- 
     });
- 
-    suggestions.appendChild(div);
- 
-  });
- 
-});
 
+    suggestions.appendChild(div);
+  });
+});
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -447,17 +462,15 @@ form.addEventListener("submit", async (e) => {
     `http://localhost:3000/chat/search-user?email=${email}`,
     {
       headers: {
-        authorization: `Bearer ${token}`
-      }
-    }
+        authorization: `Bearer ${token}`,
+      },
+    },
   );
-  
 
   displayUser(response.data);
 });
 
 function displayUser(user) {
-
   userList.innerHTML = "";
 
   const div = document.createElement("div");
@@ -476,12 +489,9 @@ function displayUser(user) {
   `;
 
   div.addEventListener("click", () => {
-
     chatType = "personal";
 
-    currentRoom = [currentUserId, user.id]
-      .sort()
-      .join("_");
+    currentRoom = [currentUserId, user.id].sort().join("_");
 
     socket.emit("join-room", currentRoom);
 
@@ -490,15 +500,12 @@ function displayUser(user) {
     console.log("Joined:", currentRoom);
 
     alert(`Chatting with ${user.name}`);
-    
   });
 
   userList.appendChild(div);
 }
 
-
 async function joinGroup(groupId) {
-
   chatType = "group";
   currentGroupId = groupId;
 
@@ -506,49 +513,45 @@ async function joinGroup(groupId) {
 
   chatBox.innerHTML = "";
 
-
   const response = await axios.get(
     `http://localhost:3000/chat/group/${groupId}/messages`,
     {
-      headers:{
-        Authorization:`Bearer ${token}`
-      }
-    }
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
   );
 
+  response.data.messages.forEach((msg) => {
+    const div = document.createElement("div");
 
-response.data.messages.forEach(msg => {
+    if (Number(msg.userId) === Number(currentUserId)) {
+      div.classList.add("message", "sent");
+    } else {
+      div.classList.add("message", "received");
+    }
 
-  const div = document.createElement("div");
+    const date = new Date(msg.createdAt);
 
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
 
-  if (Number(msg.userId) === Number(currentUserId)) {
-    div.classList.add("message", "sent");
-  } else {
-    div.classList.add("message", "received");
-  }
+    minutes = minutes < 10 ? "0" + minutes : minutes;
 
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
 
-  const date = new Date(msg.createdAt);
-
-  let hours = date.getHours();
-  let minutes = date.getMinutes();
-
-  minutes = minutes < 10 ? "0" + minutes : minutes;
-
-  const ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12 || 12;
-
-
-  div.innerHTML = `
+    div.innerHTML = `
 
     ${
       Number(msg.userId) !== Number(currentUserId)
-      ? `<div class="sender-name">${msg.sender?.name || ""}</div>`
-      : ""
+        ? `<div class="sender-name">${msg.sender?.name || ""}</div>`
+        : ""
     }
 
-    <div>${msg.message}</div>
+    <div>${msg.message || ""}</div>
+
+${getFileHTML(msg.fileUrl, msg.fileType)}
 
     <span class="time">
       ${hours}:${minutes} ${ampm}
@@ -556,8 +559,46 @@ response.data.messages.forEach(msg => {
 
   `;
 
-  chatBox.appendChild(div);
-
-});
-
+    chatBox.appendChild(div);
+  });
 }
+
+const mediaBtn = document.getElementById("mediaBtn");
+mediaBtn.onclick = () => {
+  mediaFile.click();
+};
+
+const mediaFile = document.getElementById("mediaFile");
+
+mediaFile.onchange = async () => {
+  const file = mediaFile.files[0];
+
+  if (!file) return;
+
+  uploading = true;
+
+  sendBtn.disabled = true; 
+
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  try {
+    const response = await fetch("http://localhost:3000/media/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    uploadedFileUrl = data.url;
+    uploadedFileType = file.type;
+
+    console.log("Uploaded:", uploadedFileUrl);
+  } catch (err) {
+    console.log(err);
+  } finally {
+    uploading = false;
+    sendBtn.disabled = false;
+  }
+};

@@ -291,4 +291,12 @@
   border-bottom:1px solid #ddd;
 }
 
+.chat-image{
+    width:200px;
+    max-height:250px;
+    object-fit:cover;
+    border-radius:10px;
+    display:block;
+    margin-top:8px;
+}
    

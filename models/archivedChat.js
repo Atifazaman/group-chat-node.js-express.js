@@ -1,11 +1,10 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../utils/dbConfiguration");
 
-const GroupMessage = sequelize.define("groupMessage", {
+const ArchivedChat = sequelize.define("archived_chat", {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
-    allowNull: false,
     primaryKey: true,
   },
 
@@ -13,15 +12,16 @@ const GroupMessage = sequelize.define("groupMessage", {
     type: DataTypes.TEXT,
     allowNull: false,
   },
-  fileUrl: {
- type: DataTypes.TEXT,
- allowNull:true
-},
 
-fileType:{
- type:DataTypes.STRING,
- allowNull:true
-}
+  fileUrl: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
+  fileType: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
 });
 
-module.exports = GroupMessage;
+module.exports = ArchivedChat;

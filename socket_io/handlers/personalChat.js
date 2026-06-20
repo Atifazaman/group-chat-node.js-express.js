@@ -7,12 +7,15 @@ module.exports = (socket, io) => {
         console.log(`${socket.user.name} joined ${roomName}`);
     });
 
-    socket.on("personal-message", ({ message, roomName }) => {
+    socket.on("personal-message", ({ message, roomName, fileUrl, fileType}) => {
 
         io.to(roomName).emit("personal-message", {
             senderId: socket.user.id,
             senderName: socket.user.name,
             message,
+             fileUrl,
+
+            fileType,
             createdAt: new Date()
         });
 

@@ -4,6 +4,9 @@ const Group = require("./groupModel");
 const GroupMember = require("./groupMemberModel");
 const GroupMessage = require("./groupMessageModel");
 const PersonalMessage = require("./personalMessageModel");
+const ArchivedChat=require("../models/archivedChat")
+const ArchivedGroupMessage = require("./archivedGroupMessage");
+const ArchivedPersonalMessage = require("./archivedPersonalMessage");
 
 User.hasMany(Chat);
 Chat.belongsTo(User);
@@ -18,7 +21,29 @@ PersonalMessage.belongsTo(User, {
   foreignKey: "senderId",
   as: "sender"
 });
+User.hasMany(ArchivedPersonalMessage, {
+  foreignKey: "senderId",
+  as: "archivedSentMessages"
+});
 
+ArchivedPersonalMessage.belongsTo(User, {
+  foreignKey: "senderId",
+  as: "sender"
+});
+
+// Archived Chats
+User.hasMany(ArchivedChat);
+ArchivedChat.belongsTo(User);
+
+User.hasMany(ArchivedGroupMessage, {
+  foreignKey: "userId",
+  as: "archivedGroupMessages"
+});
+
+ArchivedGroupMessage.belongsTo(User, {
+  foreignKey: "userId",
+  as: "sender"
+});
 
 User.hasMany(PersonalMessage, {
   foreignKey: "receiverId",
@@ -26,6 +51,16 @@ User.hasMany(PersonalMessage, {
 });
 
 PersonalMessage.belongsTo(User, {
+  foreignKey: "receiverId",
+  as: "receiver"
+});
+
+User.hasMany(ArchivedPersonalMessage, {
+  foreignKey: "receiverId",
+  as: "archivedReceivedMessages"
+});
+
+ArchivedPersonalMessage.belongsTo(User, {
   foreignKey: "receiverId",
   as: "receiver"
 });
@@ -81,6 +116,13 @@ GroupMessage.belongsTo(User, {
   foreignKey: "userId",
   as: "sender"
 });
+Group.hasMany(ArchivedGroupMessage, {
+  foreignKey: "groupId"
+});
+
+ArchivedGroupMessage.belongsTo(Group, {
+  foreignKey: "groupId"
+});
 
 module.exports = {
   User,
@@ -88,5 +130,8 @@ module.exports = {
     Group,
   GroupMember,
   GroupMessage,
-  PersonalMessage
+  PersonalMessage,
+  ArchivedChat,
+  ArchivedGroupMessage,
+  ArchivedPersonalMessage
 };
